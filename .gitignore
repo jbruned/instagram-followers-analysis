@@ -1,0 +1,13 @@
+# Personal exports and runtime state must never be committed
+data/*
+!data/.gitkeep
+state/
+*.db
+*.db-wal
+*.db-shm
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

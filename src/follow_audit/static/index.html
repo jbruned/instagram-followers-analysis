@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Follow Audit</title>
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to results</a>
+  <header class="top">
+    <h1>Follow Audit</h1>
+    <div class="controls">
+      <label id="owner-wrap" hidden>
+        <select id="owner" aria-label="Account"></select>
+      </label>
+      <label id="snapshot-wrap" hidden>
+        <select id="snapshot" aria-label="Snapshot"></select>
+      </label>
+      <div class="icon-group">
+      <button id="delete-snapshot" type="button" class="icon-btn" aria-label="Manage snapshots" aria-haspopup="dialog"
+        data-tip="Manage snapshots" data-tippos="below" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5M3 16.5l9 4.5 9-4.5"/></svg>
+      </button>
+      <button id="upload" type="button" class="icon-btn" aria-label="Upload an export"
+        data-tip="Upload an export" data-tippos="below">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M17 8l-5-5-5 5M12 3v12"/></svg>
+      </button>
+      <button id="open-settings" type="button" class="icon-btn" aria-haspopup="dialog"
+        aria-label="Settings" data-tip="Settings" data-tippos="below">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+      </div>
+    </div>
+  </header>
+
+  <dialog id="settings" aria-labelledby="settings-title">
+    <form id="settings-form" method="dialog" class="dlg">
+      <header class="dlg-head">
+        <div>
+          <h2 id="settings-title">Settings</h2>
+          <p class="small muted">Changes apply right away and are kept between runs. Defaults come
+            from the <code>FA_*</code> environment variables.</p>
+        </div>
+        <button id="settings-close" type="button" class="icon-btn" aria-label="Close settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+      <div id="settings-fields" class="dlg-body"></div>
+      <p id="settings-error" class="settings-error" role="alert" hidden></p>
+      <footer class="dlg-foot">
+        <button id="settings-reset-all" type="button" title="Put every setting back to its default">Reset all</button>
+        <span class="spacer"></span>
+        <button id="settings-cancel" type="button">Cancel</button>
+        <button id="settings-save" type="submit" class="primary">Save</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <!-- the export steps, shown in the first-run card and in the dialog behind "get a new snapshot" -->
+  <template id="howto-steps">
+      <ol>
+        <li>In Instagram open <em>Settings → Accounts Center → Your information and permissions →
+          Download your information</em>.</li>
+        <li>Choose your account, then <em>Some of your information</em>, and tick only
+          <em>Followers and following</em>.</li>
+        <li>Download to device, date range <em>All time</em>, format <em>JSON</em>.</li>
+        <li>Instagram emails you when it is ready. Drop the file here.</li>
+      </ol>
+  </template>
+
+  <dialog id="howto" aria-labelledby="howto-title">
+    <div class="dlg">
+      <header class="dlg-head">
+        <div>
+          <h2 id="howto-title">How to get a new snapshot</h2>
+          <p class="small muted">Request a fresh export from Instagram, then add it here.</p>
+        </div>
+        <button id="howto-close" type="button" class="icon-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+      <div class="dlg-body">
+        <div data-howto></div>
+        <p class="small muted">Always choose <em>All time</em>: an export cut to a date range can't
+          show who unfollowed you.</p>
+      </div>
+      <footer class="dlg-foot">
+        <span class="spacer"></span>
+        <button id="howto-pick" type="button" class="primary">Choose files</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="profile" class="profile" aria-labelledby="profile-name">
+    <div class="dlg">
+      <button id="profile-close" type="button" class="icon-btn profile-close" aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <div class="dlg-body" id="profile-body" tabindex="-1" autofocus></div>
+      <footer class="dlg-foot" id="profile-actions"></footer>
+    </div>
+  </dialog>
+
+  <dialog id="snapshots" aria-labelledby="snapshots-title">
+    <div class="dlg">
+      <header class="dlg-head">
+        <div>
+          <h2 id="snapshots-title">Manage snapshots</h2>
+          <p class="small muted">Add exports or delete the ones you don't want. Deleting recalculates
+            the comparisons without that snapshot; the export file stays where it is.</p>
+        </div>
+        <button id="snapshots-close" type="button" class="icon-btn" aria-label="Close">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </header>
+      <div class="dlg-body">
+        <table id="snapshots-table" class="snap-table">
+          <thead><tr><th>Account</th><th>Date</th><th>Imported</th><th>Type</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <footer class="dlg-foot">
+        <span class="spacer"></span>
+        <button id="snapshots-add" type="button" class="primary">Upload new snapshot</button>
+      </footer>
+    </div>
+  </dialog>
+
+  <dialog id="ask" class="small" aria-labelledby="ask-title">
+    <form method="dialog" class="dlg">
+      <header class="dlg-head">
+        <div>
+          <h2 id="ask-title"></h2>
+          <p id="ask-text" class="small muted"></p>
+        </div>
+      </header>
+      <footer class="dlg-foot" id="ask-actions"></footer>
+    </form>
+  </dialog>
+
+  <dialog id="account-pick" class="small account-pick" aria-labelledby="account-title">
+    <form id="account-form" method="dialog" class="dlg">
+      <header class="dlg-head">
+        <div>
+          <h2 id="account-title">Which account is this?</h2>
+          <p id="account-text" class="small muted"></p>
+        </div>
+      </header>
+      <div class="dlg-body">
+        <div id="account-options" class="account-options" role="radiogroup" aria-labelledby="account-title"></div>
+        <label id="account-new" class="account-new" hidden>
+          <span class="at" aria-hidden="true">@</span>
+          <input id="account-name" type="text" maxlength="30" autocomplete="off" autocapitalize="off"
+            spellcheck="false" placeholder="instagram_username" aria-label="Instagram username">
+        </label>
+        <p id="account-error" class="small account-error" role="alert" hidden></p>
+      </div>
+      <footer class="dlg-foot">
+        <span class="spacer"></span>
+        <button id="account-cancel" type="button">Cancel</button>
+        <button id="account-ok" type="submit" class="primary" disabled>Continue</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <input type="file" id="file-input" multiple hidden>
+  <div id="dropzone" aria-hidden="true" hidden><div>Drop to import</div></div>
+
+  <div id="banner" role="status" aria-live="polite" hidden></div>
+
+  <main id="main">
+    <section id="empty" class="card drop" hidden>
+      <h2>Drop your Instagram export here</h2>
+      <p>Use the <code>.zip</code> Instagram sends you, or just the followers and following files
+        (<code>.json</code> or <code>.html</code>). Nothing leaves your computer.</p>
+      <button id="pick" type="button" class="primary">Choose files</button>
+      <h3>How to get your export</h3>
+      <div data-howto></div>
+      <p class="small muted">Add exports from different dates later: each one is a snapshot, and the
+        app shows what changed between them.</p>
+    </section>
+
+    <div id="app" hidden>
+      <section class="card summary" aria-labelledby="headline">
+        <p id="headline" class="headline"></p>
+        <p id="partial-note" class="partial-note small" hidden></p>
+        <p id="old-note" class="partial-note small" hidden></p>
+        <div class="bars" id="bars">
+          <div id="venn" class="venn" role="group" aria-label="Following and followers"></div>
+          <span class="bar-label label-following">Following <strong id="n-following"></strong></span>
+          <span class="bar-label label-followers">Followers <strong id="n-followers"></strong></span>
+        </div>
+        <ul id="legend" class="legend"></ul>
+
+        <details class="checker" id="checker" hidden>
+          <summary><span id="checker-line">Account checker</span></summary>
+          <div class="checker-body">
+            <p class="small muted" id="checker-note"></p>
+            <ul id="checker-tiers" class="tiers"></ul>
+            <p class="small" id="checker-usage"></p>
+            <p class="small muted" id="checker-last"></p>
+            <button id="checker-toggle" type="button">Pause</button>
+          </div>
+        </details>
+      </section>
+
+      <nav class="tabs" role="tablist" id="tabs" aria-label="Lists"></nav>
+      <nav class="tabs subtabs" role="tablist" id="subtabs" aria-label="Views" hidden></nav>
+
+      <section class="card list" id="panel" role="tabpanel">
+        <div id="help" class="help small muted"></div>
+        <div class="toolbar" id="toolbar">
+          <input id="q" type="search" placeholder="Search usernames or names" aria-label="Search">
+          <label class="inline">Sort
+            <select id="sort">
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="az">A to Z</option>
+              <option value="post_new">Last post: newest</option>
+              <option value="post_old">Last post: oldest</option>
+            </select>
+          </label>
+          <button id="copy" type="button">Copy usernames</button>
+          <a id="csv" class="button" href="#">Download CSV</a>
+        </div>
+        <p id="count" class="small muted" aria-live="polite"></p>
+        <ul id="rows" class="rows"></ul>
+        <div id="history" hidden></div>
+        <button id="more" type="button" hidden>Show more</button>
+      </section>
+    </div>
+  </main>
+
+  <footer class="small muted">
+    Runs locally. No login, no tracking, no external requests from this page.
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>
