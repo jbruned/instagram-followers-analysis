@@ -12,10 +12,13 @@ uv run follow-audit --port 8001     # http://localhost:8001 (use your own port w
 uv run pytest
 uv run ruff check && uv run ruff format --check
 node --check src/follow_audit/static/app.js
+node --test --test-concurrency=2 tests/frontend/*.test.mjs   # browser tests (Node 22, Chrome)
 uv run python tests/fixtures/build.py   # regenerate the synthetic fixture exports
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same checks. Everything must pass before a commit.
+CI (`.github/workflows/ci.yml`) runs the same checks as four parallel jobs: `lint` (ruff),
+`test` (pytest), `frontend` (the `app.js` syntax check and the browser tests) and `docker` (the
+image builds). Everything must pass before a commit.
 
 ## Layout
 
@@ -28,6 +31,17 @@ CI (`.github/workflows/ci.yml`) runs the same checks. Everything must pass befor
 | `src/follow_audit/db.py` | Schema and migrations |
 | `src/follow_audit/static/` | The page: `index.html`, `app.js`, `app.css` |
 | `tests/` | pytest suite; `tests/fixtures/` holds synthetic exports only |
+
+## Browser tests
+
+`tests/frontend/` holds end-to-end tests that run the real app and a real headless Chrome, with no
+dependencies beyond Node 22 and Chrome (found automatically, or set `CHROME_BIN`). `harness.mjs`
+starts the app on a free port with a temporary state folder and a data folder seeded from the
+synthetic fixtures (`FA_TEST_CMD` overrides the command that runs the app), drives Chrome over the
+DevTools protocol with real mouse and keyboard events, and removes everything afterwards.
+`support.mjs` has small helpers and builders for exports the fixtures lack. Each test gets a fresh
+app, so tests can change data freely. Run them with the `node --test` command under Setup; they
+take about half a minute.
 
 ## Ground rules
 
@@ -54,10 +68,11 @@ Things deliberately left out of the MVP, roughly in the order they are worth doi
 
 ### Planned
 
-- **Frontend tests.** Turn the headless-Chrome scripts used during development (they drive the
-  page over the DevTools protocol against a temporary server and database copy) into repo tests:
-  dialogs lock and unlock the page, rows are patched not rebuilt, the profile window, the account
-  chooser, the undo message, the snapshots table. Run them in CI.
+- **More frontend test coverage.** The browser tests (below) cover the page, dialogs, actions,
+  the profile window and uploads. Still untested: the checker panel and its polling (needs a fake
+  checker), the viewport observer that queues rows you look at, touch long-press on pictures,
+  dropping files on the page, the first-run flow with a real upload, and slow-server behaviour
+  (see the loading-states item).
 - **History tab redesign.**
 - **Search, filters and buttons bar redesign.**
 - **Split `app.js`** (about 1,450 lines in one scope) into native ES modules by concern: util/dom,
