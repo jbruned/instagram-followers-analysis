@@ -1,0 +1,12 @@
+{
+  "name": "follow-audit-frontend",
+  "private": true,
+  "description": "Dev tooling for the page in src/follow_audit/static: type checking and browser tests. Nothing here is shipped.",
+  "scripts": {
+    "typecheck": "tsc",
+    "test:browser": "node --test --test-concurrency=2 --test-timeout=120000 tests/frontend/*.test.mjs"
+  },
+  "devDependencies": {
+    "typescript": "~5.9.0"
+  }
+}

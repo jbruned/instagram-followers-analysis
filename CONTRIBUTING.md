@@ -11,13 +11,13 @@ uv sync
 uv run follow-audit --port 8001     # http://localhost:8001 (use your own port while developing)
 uv run pytest
 uv run ruff check && uv run ruff format --check
-node --check src/follow_audit/static/app.js
+npm ci && npx tsc                                            # type check of the page (once, then just `npx tsc`)
 node --test --test-concurrency=2 tests/frontend/*.test.mjs   # browser tests (Node 22, Chrome)
 uv run python tests/fixtures/build.py   # regenerate the synthetic fixture exports
 ```
 
 CI (`.github/workflows/ci.yml`) runs the same checks as four parallel jobs: `lint` (ruff),
-`test` (pytest), `frontend` (the `app.js` syntax check and the browser tests) and `docker` (the
+`test` (pytest), `frontend` (the type check of the page and the browser tests) and `docker` (the
 image builds). Everything must pass before a commit.
 
 ## Layout
@@ -29,8 +29,46 @@ image builds). Everything must pass before a commit.
 | `src/follow_audit/checker/` | The background account checker: `client` (profile page parsing), `worker` (queue, pacing, cooldowns), `avatars` |
 | `src/follow_audit/api.py`, `app.py`, `security.py` | Routes, app factory, Host and Origin protection |
 | `src/follow_audit/db.py` | Schema and migrations |
-| `src/follow_audit/static/` | The page: `index.html`, `app.js`, `app.css` |
+| `src/follow_audit/static/` | The page: `index.html`, `app.css` and the ES modules in `js/` (see below) |
 | `tests/` | pytest suite; `tests/fixtures/` holds synthetic exports only |
+
+## The page's modules
+
+No build step: `index.html` loads `js/main.js` as a native ES module and the browser follows the
+imports. Each module owns one concern; `main.js` only wires and starts the page.
+
+| Module | Concern |
+|---|---|
+| `state.js` | Tabs, what is selected, query strings |
+| `dom.js`, `format.js`, `api.js` | DOM helpers, dates and numbers, talking to the server |
+| `toast.js`, `tooltip.js`, `dialogs.js`, `icons.js` | The message, tooltips, modal dialogs, small icons |
+| `summary.js`, `tabs.js`, `rows.js`, `history.js` | The summary card, tabs, the account rows, the History tab |
+| `data.js` | Loading the summary, lists and snapshots |
+| `actions.js` | Ignore, snooze, flag and undo |
+| `profile.js`, `snapshots.js`, `settings.js`, `howto.js` | The profile window and the other dialogs |
+| `upload.js` | Uploading, dropping files, the account and partial-export questions |
+| `checker.js`, `polling.js`, `touch.js` | The checker panel and viewport queue, polling for new exports, touch long-press |
+
+Modules import each other in cycles (a row needs the actions, which reload the rows). That is fine
+because they only use each other's functions after loading; do not run code that needs another
+module at the top level of a module, except wiring in `main.js`. `window.followAudit` exposes a few
+functions for the browser tests.
+
+## Types for the page
+
+The page is plain JavaScript, checked by TypeScript: `tsconfig.json` turns on `checkJs` and
+`strict`, and `npx tsc` (no output, nothing is built) must pass. Types are written as JSDoc
+comments next to the code; the shapes the server sends are in `static/js/types.d.ts` (keep it in
+step with `api.py` and `analysis.py`). Conventions:
+
+- Annotate parameters with `@param`, and say what a function returns when it is not obvious.
+- Get elements with the typed helpers in `dom.js` (`$`, `$input`, `$dialog`, ...): they throw a
+  clear error when an id is missing or of another kind, so the rest of the code can trust the type.
+- `getJSON` returns `any`: annotate the variable that receives it with the matching type.
+- Prefer narrowing (`instanceof`, early returns) to casts; use a cast only where the page's markup
+  guarantees the type, and say why.
+
+`package.json` only holds dev tooling (TypeScript); nothing from `node_modules` is served.
 
 ## Browser tests
 
@@ -75,9 +113,6 @@ Things deliberately left out of the MVP, roughly in the order they are worth doi
   (see the loading-states item).
 - **History tab redesign.**
 - **Search, filters and buttons bar redesign.**
-- **Split `app.js`** (about 1,450 lines in one scope) into native ES modules by concern: util/dom,
-  summary, rows and badges, dialogs, upload, checker panel and polling, touch handling, wiring.
-  Consider splitting `analysis.py` (lists, rows, profile, history) the same way.
 - **Animations and loading states across the app.** Add transitions and skeleton or spinner
   states wherever data loads (summary, lists, History, the snapshots table, uploads), and test
   them by simulating slow server responses (a delay switch or proxy in the test harness) so the

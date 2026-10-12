@@ -1,6 +1,7 @@
 data/
 state/
 .venv/
+node_modules/
 tests/
 .git/
 __pycache__/

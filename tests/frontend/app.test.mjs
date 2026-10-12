@@ -50,12 +50,39 @@ describe("the page", () => {
     assert.ok(await page.eval(`document.getElementById("old-note").hidden`));
     await server.api("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ old_snapshot_days: 1 }) });
-    await page.eval(`loadSummary()`);
+    await page.eval(`followAudit.loadSummary()`);
     await page.waitFor(`!document.getElementById("old-note").hidden`);
     assert.match(await page.eval(`document.getElementById("old-note").textContent`), /Old snapshot.*days ago/s);
     assert.ok(await isOpen(page, "howto") === false);
     await page.click("#old-note .linklike");
     await page.waitFor(`document.getElementById("howto").open`);
+  }));
+});
+
+describe("small interactions", () => {
+  it("shows a tooltip over anything with a data-tip, also inside a dialog", () => app(async ({ page }) => {
+    const hover = async (selector) => { const r = await page.rect(selector); await page.send("Input.dispatchMouseEvent", { type: "mouseMoved", x: r.x, y: r.y }); };
+    await hover(`${row("hank")} .actions button:first-child`);
+    await page.waitFor(`document.querySelector(".tip.show")?.textContent === "Whitelist this account or snooze it"`);
+    await page.click("#delete-snapshot");
+    await page.waitFor(`document.getElementById("snapshots").open`);
+    await hover("#snapshots-table .snap-delete");
+    await page.waitFor(`document.querySelector(".tip.show")?.textContent === "Delete snapshot"`);
+    assert.equal(await page.eval(`document.querySelector(".tip").parentElement.tagName`), "DIALOG"); // above the backdrop
+  }));
+
+  it("sorts the list", () => app(async ({ page }) => {
+    const order = () => page.eval(`[...document.querySelectorAll("#rows .row")].map((r) => r.dataset.user).join()`);
+    await page.eval(`(() => { const s = document.getElementById("sort"); s.value = "az"; s.dispatchEvent(new Event("change")); })()`);
+    await page.waitFor(`[...document.querySelectorAll("#rows .row")].map((r) => r.dataset.user).join() === "hank,newguy"`);
+    assert.equal(await order(), "hank,newguy");
+  }));
+
+  it("copies the usernames of the list and offers the CSV", () => app(async ({ page }) => {
+    assert.match(await page.eval(`document.getElementById("csv").getAttribute("href")`), /^\/api\/export\/not_following_back\.csv\?/);
+    await page.click("#copy");
+    // headless Chrome may refuse the clipboard; either way the page says what happened
+    await page.waitFor(`/Copied 2 usernames|blocked clipboard/.test(document.getElementById("banner").textContent)`);
   }));
 });
 
@@ -88,7 +115,7 @@ describe("dialogs", () => {
   it("keep a message clickable above their backdrop", () => app(async ({ page }) => {
     await page.click("#delete-snapshot");
     await page.waitFor(`document.getElementById("snapshots").open`);
-    await page.fire(`window.__clicks = 0, banner("Over the dialog, click to undo", false, () => { window.__clicks++; })`);
+    await page.fire(`window.__clicks = 0, followAudit.banner("Over the dialog, click to undo", false, () => { window.__clicks++; })`);
     await waitToast(page, "Over the dialog");
     assert.equal(await page.eval(`document.getElementById("banner").parentElement.tagName`), "DIALOG");
     await page.click("#banner");
@@ -161,7 +188,7 @@ describe("account actions", () => {
     await page.eval(`document.querySelector(${JSON.stringify(row("hank"))}).__same = true`);
     await server.api("/api/decisions/newguy?owner=alice", { method: "POST",
       headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision: "ignored" }) });
-    await page.eval(`reloadLoaded()`);
+    await page.eval(`followAudit.reloadLoaded()`);
     await waitUsers(page, ["hank"]);
     assert.ok(await page.eval(`document.querySelector(${JSON.stringify(row("hank"))}).__same === true`),
       "the unchanged row was kept");

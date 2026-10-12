@@ -268,7 +268,7 @@ def test_ignored_accounts_move_between_the_sub_tabs(client):
 
 
 def test_page_files_are_revalidated_not_cached_blindly(client):
-    for path in ("/", "/app.js", "/app.css"):
+    for path in ("/", "/js/main.js", "/app.css"):
         first = client.get(path)
         assert first.status_code == 200 and first.headers["cache-control"] == "no-cache"
         again = client.get(path, headers={"If-None-Match": first.headers["etag"]})

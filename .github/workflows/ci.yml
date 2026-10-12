@@ -49,8 +49,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
       - run: uv sync --frozen
-      - run: node --check src/follow_audit/static/app.js
+      - run: npm ci
+      # types of the page's JavaScript (JSDoc), see CONTRIBUTING.md
+      - run: npx tsc
       # starts the app on private ports and drives the Chrome that the runner already has
       - run: node --test --test-concurrency=2 --test-timeout=120000 tests/frontend/*.test.mjs
 
